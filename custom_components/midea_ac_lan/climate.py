@@ -253,6 +253,13 @@ class MideaClimate(MideaEntity, ClimateEntity):
                 type(self),
             )
             return
+        if self.hass.is_stopping:
+            _LOGGER.debug(
+                "Climate update_state skipped for %s [%s]: HASS is stopping",
+                self.name,
+                type(self),
+            )
+            return
         self.schedule_update_ha_state()
 
 
