@@ -43,8 +43,8 @@ class MideaSwitch(MideaEntity, ToggleEntity):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Turn on switch."""
-        self._device.set_attribute(attr=self._entity_key, value=True)
+        self._set_device_attribute(attr=self._entity_key, value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Turn off switch."""
-        self._device.set_attribute(attr=self._entity_key, value=False)
+        self._set_device_attribute(attr=self._entity_key, value=False)

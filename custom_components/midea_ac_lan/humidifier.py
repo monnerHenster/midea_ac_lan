@@ -81,11 +81,11 @@ class MideaHumidifier(MideaEntity, HumidifierEntity):
 
     def set_humidity(self, humidity: int) -> None:
         """Midea Humidifier set humidity."""
-        self._device.set_attribute("target_humidity", humidity)
+        self._set_device_attribute("target_humidity", humidity)
 
     def set_mode(self, mode: str) -> None:
         """Midea Humidifier set mode."""
-        self._device.set_attribute("mode", mode)
+        self._set_device_attribute("mode", mode)
 
     @property
     def is_on(self) -> bool:
@@ -94,11 +94,11 @@ class MideaHumidifier(MideaEntity, HumidifierEntity):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Humidifier turn on."""
-        self._device.set_attribute(attr="power", value=True)
+        self._set_device_attribute(attr="power", value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Humidifier turn off."""
-        self._device.set_attribute(attr="power", value=False)
+        self._set_device_attribute(attr="power", value=False)
 
     def update_state(self, status: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Humidifier update state."""

@@ -33,6 +33,11 @@ from homeassistant.helpers.typing import ConfigType
 from midealocal.device import DeviceType, MideaDevice, ProtocolVersion
 from midealocal.devices import device_selector
 
+from .connection_manager import (
+    CONNECTION_MANAGERS,
+    install_device_connection_manager,
+    run_device_command,
+)
 from .const import (
     ALL_PLATFORM,
     CONF_ACCOUNT,
@@ -118,7 +123,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                     and value in range(103)
                 )
             ):
-                dev.set_attribute(attr=attr, value=value)
+                run_device_command(
+                    dev,
+                    f"service set_attribute {attr}",
+                    lambda: dev.set_attribute(attr=attr, value=value),
+                )
             else:
                 _LOGGER.error(
                     "Appliance [%s] has no attribute %s or value is invalid",
@@ -141,7 +150,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             return
         dev = hass.data[DOMAIN][DEVICES].get(device_id)
         if dev:
-            dev.send_command(cmd_type, cmd_body)
+            run_device_command(
+                dev,
+                "service send_command",
+                lambda: dev.send_command(cmd_type, cmd_body),
+            )
 
     # register service func calls:
     # `service_set_attribute`, service.yaml key: `set_attribute`
@@ -240,6 +253,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             customize=customize,
         )
     if device:
+        manager = install_device_connection_manager(device)
         if refresh_interval is not None:
             device.set_refresh_interval(refresh_interval)
         device.open()
@@ -247,7 +261,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             hass.data[DOMAIN] = {}
         if DEVICES not in hass.data[DOMAIN]:
             hass.data[DOMAIN][DEVICES] = {}
+        if CONNECTION_MANAGERS not in hass.data[DOMAIN]:
+            hass.data[DOMAIN][CONNECTION_MANAGERS] = {}
         hass.data[DOMAIN][DEVICES][device_id] = device
+        hass.data[DOMAIN][CONNECTION_MANAGERS][device_id] = manager
         # Forward the setup of an entry to all platforms
         await hass.config_entries.async_forward_entry_setups(config_entry, ALL_PLATFORM)
         # Listener `update_listener` is
@@ -278,6 +295,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
             except (OSError, ConnectionError, AttributeError) as e:
                 _LOGGER.warning("Failed to close Midea socket cleanly: %s", e)
         hass.data[DOMAIN][DEVICES].pop(device_id)
+        hass.data[DOMAIN].get(CONNECTION_MANAGERS, {}).pop(device_id, None)
     # Forward the unloading of an entry to platforms
     await hass.config_entries.async_unload_platforms(config_entry, ALL_PLATFORM)
     return True

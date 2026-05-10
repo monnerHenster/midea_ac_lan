@@ -156,21 +156,21 @@ class MideaLight(MideaEntity, LightEntity):
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401
         """Midea Light turn on."""
         if not self.is_on:
-            self._device.set_attribute(attr=X13Attributes.power, value=True)
+            self._set_device_attribute(attr=X13Attributes.power, value=True)
         for key, value in kwargs.items():
             if key == ATTR_BRIGHTNESS:
-                self._device.set_attribute(attr=X13Attributes.brightness, value=value)
+                self._set_device_attribute(attr=X13Attributes.brightness, value=value)
             if key == ATTR_COLOR_TEMP_KELVIN:
-                self._device.set_attribute(
+                self._set_device_attribute(
                     attr=X13Attributes.color_temperature,
                     value=value,
                 )
             if key == ATTR_EFFECT:
-                self._device.set_attribute(attr=X13Attributes.effect, value=value)
+                self._set_device_attribute(attr=X13Attributes.effect, value=value)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Light turn off."""
-        self._device.set_attribute(attr=X13Attributes.power, value=False)
+        self._set_device_attribute(attr=X13Attributes.power, value=False)
 
     def update_state(self, status: Any) -> None:  # noqa: ANN401,ARG002
         """Midea Light update state."""

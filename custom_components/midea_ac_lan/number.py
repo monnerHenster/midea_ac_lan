@@ -99,4 +99,4 @@ class MideaNumber(MideaEntity, NumberEntity):
 
     def set_native_value(self, value: Any) -> None:  # noqa: ANN401
         """Set value."""
-        self._device.set_attribute(self._entity_key, value)
+        self._set_device_attribute(self._entity_key, value)

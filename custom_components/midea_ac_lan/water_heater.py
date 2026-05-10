@@ -157,11 +157,11 @@ class MideaWaterHeater(MideaEntity, WaterHeaterEntity):
             return
         # input target_temperature should be float
         temperature = float(kwargs[ATTR_TEMPERATURE])
-        self._device.set_attribute("target_temperature", temperature)
+        self._set_device_attribute("target_temperature", temperature)
 
     def set_operation_mode(self, operation_mode: str) -> None:
         """Midea Water Heater set operation mode."""
-        self._device.set_attribute(attr="mode", value=operation_mode)
+        self._set_device_attribute(attr="mode", value=operation_mode)
 
     @property
     def operation_list(self) -> list[str] | None:
@@ -172,11 +172,11 @@ class MideaWaterHeater(MideaEntity, WaterHeaterEntity):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Water Heater turn on."""
-        self._device.set_attribute(attr="power", value=True)
+        self._set_device_attribute(attr="power", value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Water Heater turn off."""
-        self._device.set_attribute(attr="power", value=False)
+        self._set_device_attribute(attr="power", value=False)
 
     async def async_turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401
         """Midea Water Heater async turn on."""
@@ -305,7 +305,7 @@ class MideaC3WaterHeater(MideaWaterHeater):
         if ATTR_TEMPERATURE not in kwargs:
             return
         temperature = float(kwargs[ATTR_TEMPERATURE])
-        self._device.set_attribute(C3Attributes.dhw_target_temp, temperature)
+        self._set_device_attribute(C3Attributes.dhw_target_temp, temperature)
 
     @property
     def min_temp(self) -> float:
@@ -319,11 +319,11 @@ class MideaC3WaterHeater(MideaWaterHeater):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea C3 Water Heater turn on."""
-        self._device.set_attribute(attr=C3Attributes.dhw_power, value=True)
+        self._set_device_attribute(attr=C3Attributes.dhw_power, value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea C3 Water Heater turn off."""
-        self._device.set_attribute(attr=C3Attributes.dhw_power, value=False)
+        self._set_device_attribute(attr=C3Attributes.dhw_power, value=False)
 
 
 class MideaE6WaterHeater(MideaWaterHeater):
@@ -392,7 +392,7 @@ class MideaE6WaterHeater(MideaWaterHeater):
         if ATTR_TEMPERATURE not in kwargs:
             return
         temperature = float(kwargs[ATTR_TEMPERATURE])
-        self._device.set_attribute(self._target_temperature_attr, temperature)
+        self._set_device_attribute(self._target_temperature_attr, temperature)
 
     @property
     def min_temp(self) -> float:
@@ -420,11 +420,11 @@ class MideaE6WaterHeater(MideaWaterHeater):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea E6 Water Heater turn on."""
-        self._device.set_attribute(attr=self._power_attr, value=True)
+        self._set_device_attribute(attr=self._power_attr, value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea E6 Water Heater turn off."""
-        self._device.set_attribute(attr=self._power_attr, value=False)
+        self._set_device_attribute(attr=self._power_attr, value=False)
 
 
 class MideaCDWaterHeater(MideaWaterHeater):

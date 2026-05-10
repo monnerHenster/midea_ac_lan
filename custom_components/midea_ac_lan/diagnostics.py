@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.const import (
+    CONF_DEVICE_ID,
     CONF_TOKEN,
 )
 
@@ -13,13 +14,14 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
-from .const import CONF_KEY
+from .connection_manager import CONNECTION_MANAGERS
+from .const import CONF_KEY, DOMAIN
 
 TO_REDACT = {CONF_TOKEN, CONF_KEY}
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant,  # noqa: ARG001
+    hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry.
@@ -29,4 +31,10 @@ async def async_get_config_entry_diagnostics(
     Dictionary of config
 
     """
-    return {"entry": async_redact_data(entry.as_dict(), TO_REDACT)}
+    device_id = entry.data.get(CONF_DEVICE_ID)
+    manager = hass.data.get(DOMAIN, {}).get(CONNECTION_MANAGERS, {}).get(device_id)
+    runtime = manager.diagnostic_data if manager is not None else None
+    return {
+        "entry": async_redact_data(entry.as_dict(), TO_REDACT),
+        "runtime_connection": runtime,
+    }

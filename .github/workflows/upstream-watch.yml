@@ -1,0 +1,66 @@
+name: Watch upstream releases
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  upstream-watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fork
+        uses: actions/checkout@v4
+
+      - name: Compare upstream release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const upstreamOwner = "wuwentao";
+            const upstreamRepo = "midea_ac_lan";
+            const baseline = fs.readFileSync("UPSTREAM_BASELINE", "utf8").trim();
+            const latest = await github.rest.repos.getLatestRelease({
+              owner: upstreamOwner,
+              repo: upstreamRepo,
+            });
+            const upstreamTag = latest.data.tag_name;
+
+            if (upstreamTag === baseline) {
+              core.info(`Upstream is still at ${upstreamTag}`);
+              return;
+            }
+
+            const title = `Upstream midea_ac_lan ${upstreamTag} is available`;
+            const existing = await github.rest.search.issuesAndPullRequests({
+              q: [
+                `repo:${context.repo.owner}/${context.repo.repo}`,
+                "is:issue is:open in:title",
+                `"${title}"`,
+              ].join(" "),
+            });
+            if (existing.data.total_count > 0) {
+              core.info(`Existing issue already tracks ${upstreamTag}`);
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body: [
+                `Official upstream released ${upstreamTag}.`,
+                "",
+                `Current fork baseline: ${baseline}`,
+                `Release notes: ${latest.data.html_url}`,
+                "",
+                [
+                  "Merge upstream, rerun validation, then publish a new fork release",
+                  `such as \`${upstreamTag}-codex.1\`.`,
+                ].join(" "),
+              ].join("\n"),
+            });
