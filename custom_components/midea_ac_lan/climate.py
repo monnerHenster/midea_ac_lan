@@ -181,11 +181,11 @@ class MideaClimate(MideaEntity, ClimateEntity):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Climate turn on."""
-        self._device.set_attribute(attr="power", value=True)
+        self._set_device_attribute(attr="power", value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Climate turn off."""
-        self._device.set_attribute(attr="power", value=False)
+        self._set_device_attribute(attr="power", value=False)
 
     def set_temperature(self, **kwargs: Any) -> None:  # noqa: ANN401
         """Midea Climate set temperature."""
@@ -198,10 +198,13 @@ class MideaClimate(MideaEntity, ClimateEntity):
         else:
             try:
                 mode = self.hvac_modes.index(hvac_mode.lower()) if hvac_mode else None
-                self._device.set_target_temperature(
-                    target_temperature=temperature,
-                    mode=mode,
-                    zone=None,
+                self._run_device_command(
+                    "set_target_temperature",
+                    lambda: self._device.set_target_temperature(
+                        target_temperature=temperature,
+                        mode=mode,
+                        zone=None,
+                    ),
                 )
             except ValueError:
                 _LOGGER.exception("Error setting temperature with: %s", kwargs)
@@ -211,7 +214,7 @@ class MideaClimate(MideaEntity, ClimateEntity):
         if hvac_mode == HVACMode.OFF:
             self.turn_off()
         else:
-            self._device.set_attribute(
+            self._set_device_attribute(
                 attr="mode",
                 value=self.hvac_modes.index(hvac_mode),
             )
@@ -221,25 +224,25 @@ class MideaClimate(MideaEntity, ClimateEntity):
         old_mode = self.preset_mode
         preset_mode = preset_mode.lower()
         if preset_mode == PRESET_AWAY:
-            self._device.set_attribute(attr="frost_protect", value=True)
+            self._set_device_attribute(attr="frost_protect", value=True)
         elif preset_mode == PRESET_COMFORT:
-            self._device.set_attribute(attr="comfort_mode", value=True)
+            self._set_device_attribute(attr="comfort_mode", value=True)
         elif preset_mode == PRESET_SLEEP:
-            self._device.set_attribute(attr="sleep_mode", value=True)
+            self._set_device_attribute(attr="sleep_mode", value=True)
         elif preset_mode == PRESET_ECO:
-            self._device.set_attribute(attr="eco_mode", value=True)
+            self._set_device_attribute(attr="eco_mode", value=True)
         elif preset_mode == PRESET_BOOST:
-            self._device.set_attribute(attr="boost_mode", value=True)
+            self._set_device_attribute(attr="boost_mode", value=True)
         elif old_mode == PRESET_AWAY:
-            self._device.set_attribute(attr="frost_protect", value=False)
+            self._set_device_attribute(attr="frost_protect", value=False)
         elif old_mode == PRESET_COMFORT:
-            self._device.set_attribute(attr="comfort_mode", value=False)
+            self._set_device_attribute(attr="comfort_mode", value=False)
         elif old_mode == PRESET_SLEEP:
-            self._device.set_attribute(attr="sleep_mode", value=False)
+            self._set_device_attribute(attr="sleep_mode", value=False)
         elif old_mode == PRESET_ECO:
-            self._device.set_attribute(attr="eco_mode", value=False)
+            self._set_device_attribute(attr="eco_mode", value=False)
         elif old_mode == PRESET_BOOST:
-            self._device.set_attribute(attr="boost_mode", value=False)
+            self._set_device_attribute(attr="boost_mode", value=False)
 
     def update_state(self, status: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Climate update state."""
@@ -361,16 +364,19 @@ class MideaACClimate(MideaClimate):
         """Midea AC Climate set fan mode."""
         fan_speed = self._fan_speeds.get(fan_mode)
         if fan_speed:
-            self._device.set_attribute(attr=ACAttributes.fan_speed, value=fan_speed)
+            self._set_device_attribute(attr=ACAttributes.fan_speed, value=fan_speed)
 
     def set_swing_mode(self, swing_mode: str) -> None:
         """Midea AC Climate set swing mode."""
         swing = self._attr_swing_modes.index(swing_mode)
         swing_vertical = swing & 1 > 0
         swing_horizontal = swing & 2 > 0
-        self._device.set_swing(
-            swing_vertical=swing_vertical,
-            swing_horizontal=swing_horizontal,
+        self._run_device_command(
+            "set_swing",
+            lambda: self._device.set_swing(
+                swing_vertical=swing_vertical,
+                swing_horizontal=swing_horizontal,
+            ),
         )
 
 
@@ -420,11 +426,11 @@ class MideaCCClimate(MideaClimate):
 
     def set_fan_mode(self, fan_mode: str) -> None:
         """Midea CC Climate set fan mode."""
-        self._device.set_attribute(attr=CCAttributes.fan_speed, value=fan_mode)
+        self._set_device_attribute(attr=CCAttributes.fan_speed, value=fan_mode)
 
     def set_swing_mode(self, swing_mode: str) -> None:
         """Midea CC Climate set swing mode."""
-        self._device.set_attribute(
+        self._set_device_attribute(
             attr=CCAttributes.swing,
             value=swing_mode == SWING_ON,
         )
@@ -574,11 +580,11 @@ class MideaC3Climate(MideaClimate):
 
     def turn_on(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea C3 Climate turn on."""
-        self._device.set_attribute(attr=self._power_attr, value=True)
+        self._set_device_attribute(attr=self._power_attr, value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea C3 Climate turn off."""
-        self._device.set_attribute(attr=self._power_attr, value=False)
+        self._set_device_attribute(attr=self._power_attr, value=False)
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -616,10 +622,13 @@ class MideaC3Climate(MideaClimate):
         else:
             try:
                 mode = self.hvac_modes.index(hvac_mode.lower()) if hvac_mode else None
-                self._device.set_target_temperature(
-                    target_temperature=temperature,
-                    mode=mode,
-                    zone=self._zone,
+                self._run_device_command(
+                    "set_zone_target_temperature",
+                    lambda: self._device.set_target_temperature(
+                        target_temperature=temperature,
+                        mode=mode,
+                        zone=self._zone,
+                    ),
                 )
             except ValueError:
                 _LOGGER.exception("Error setting temperature with: %s", kwargs)
@@ -629,7 +638,13 @@ class MideaC3Climate(MideaClimate):
         if hvac_mode == HVACMode.OFF:
             self.turn_off()
         else:
-            self._device.set_mode(self._zone, self.hvac_modes.index(hvac_mode))
+            self._run_device_command(
+                "set_zone_hvac_mode",
+                lambda: self._device.set_mode(
+                    self._zone,
+                    self.hvac_modes.index(hvac_mode),
+                ),
+            )
 
 
 class MideaFBClimate(MideaClimate):
@@ -690,9 +705,12 @@ class MideaFBClimate(MideaClimate):
         if hvac_mode == HVACMode.OFF:
             self.turn_off()
         else:
-            self._device.set_target_temperature(
-                target_temperature=temperature,
-                mode=None,
+            self._run_device_command(
+                "set_fb_target_temperature",
+                lambda: self._device.set_target_temperature(
+                    target_temperature=temperature,
+                    mode=None,
+                ),
             )
 
     def set_hvac_mode(self, hvac_mode: HVACMode) -> None:
@@ -704,4 +722,4 @@ class MideaFBClimate(MideaClimate):
 
     def set_preset_mode(self, preset_mode: str) -> None:
         """Midea FB Climate set preset mode."""
-        self._device.set_attribute(attr=FBAttributes.mode, value=preset_mode)
+        self._set_device_attribute(attr=FBAttributes.mode, value=preset_mode)

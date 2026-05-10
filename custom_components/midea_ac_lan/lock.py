@@ -43,11 +43,11 @@ class MideaLock(MideaEntity, LockEntity):
 
     def lock(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Lock the lock."""
-        self._device.set_attribute(attr=self._entity_key, value=True)
+        self._set_device_attribute(attr=self._entity_key, value=True)
 
     def unlock(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Unlock the lock."""
-        self._device.set_attribute(attr=self._entity_key, value=False)
+        self._set_device_attribute(attr=self._entity_key, value=False)
 
     def open(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Open the lock."""

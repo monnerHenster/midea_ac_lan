@@ -102,15 +102,15 @@ class MideaFan(MideaEntity, FanEntity):
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea Fan turn off."""
-        self._device.set_attribute(attr="power", value=False)
+        self._set_device_attribute(attr="power", value=False)
 
     def oscillate(self, oscillating: bool) -> None:
         """Midea Fan oscillate."""
-        self._device.set_attribute(attr="oscillate", value=oscillating)
+        self._set_device_attribute(attr="oscillate", value=oscillating)
 
     def set_preset_mode(self, preset_mode: str) -> None:
         """Midea Fan set preset mode."""
-        self._device.set_attribute(attr="mode", value=preset_mode.capitalize())
+        self._set_device_attribute(attr="mode", value=preset_mode.capitalize())
 
     @property
     def percentage(self) -> int | None:
@@ -122,7 +122,7 @@ class MideaFan(MideaEntity, FanEntity):
     def set_percentage(self, percentage: int) -> None:
         """Midea Fan set percentage."""
         fan_speed = round(percentage / self.percentage_step)
-        self._device.set_attribute(attr="fan_speed", value=fan_speed)
+        self._set_device_attribute(attr="fan_speed", value=fan_speed)
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Midea Fan async set percentage."""
@@ -167,7 +167,10 @@ class MideaFAFan(MideaFan):
     ) -> None:
         """Midea FA Fan turn on."""
         fan_speed = int(percentage / self.percentage_step + 0.5) if percentage else None
-        self._device.turn_on(fan_speed=fan_speed, mode=preset_mode)
+        self._run_device_command(
+            "turn_on",
+            lambda: self._device.turn_on(fan_speed=fan_speed, mode=preset_mode),
+        )
 
 
 class MideaB6Fan(MideaFan):
@@ -193,7 +196,10 @@ class MideaB6Fan(MideaFan):
     ) -> None:
         """Midea B6 Fan turn on."""
         fan_speed = int(percentage / self.percentage_step + 0.5) if percentage else None
-        self._device.turn_on(fan_speed=fan_speed, mode=preset_mode)
+        self._run_device_command(
+            "turn_on",
+            lambda: self._device.turn_on(fan_speed=fan_speed, mode=preset_mode),
+        )
 
 
 class MideaACFreshAirFan(MideaFan):
@@ -233,23 +239,20 @@ class MideaACFreshAirFan(MideaFan):
         **kwargs: Any,  # noqa: ANN401, ARG002
     ) -> None:
         """Midea AC Fan tun on."""
-        self._device.set_attribute(attr=ACAttributes.fresh_air_power, value=True)
+        self._set_device_attribute(attr=ACAttributes.fresh_air_power, value=True)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea AC Fan turn off."""
-        self._device.set_attribute(attr=ACAttributes.fresh_air_power, value=False)
+        self._set_device_attribute(attr=ACAttributes.fresh_air_power, value=False)
 
     def set_percentage(self, percentage: int) -> None:
         """Midea AC Fan set percentage."""
         fan_speed = int(percentage / self.percentage_step + 0.5)
-        self._device.set_attribute(
-            attr=ACAttributes.fresh_air_fan_speed,
-            value=fan_speed,
-        )
+        self._set_device_attribute(attr=ACAttributes.fresh_air_fan_speed, value=fan_speed)
 
     def set_preset_mode(self, preset_mode: str) -> None:
         """Midea AC Fan set preset mode."""
-        self._device.set_attribute(attr=ACAttributes.fresh_air_mode, value=preset_mode)
+        self._set_device_attribute(attr=ACAttributes.fresh_air_mode, value=preset_mode)
 
     @property
     def preset_mode(self) -> str | None:
@@ -279,7 +282,7 @@ class MideaCEFan(MideaFan):
         **kwargs: Any,  # noqa: ANN401, ARG002
     ) -> None:
         """Midea CE Fan turn on."""
-        self._device.set_attribute(attr=CEAttributes.power, value=True)
+        self._set_device_attribute(attr=CEAttributes.power, value=True)
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Midea CE Fan async set percentage."""
@@ -313,8 +316,8 @@ class MideaX40Fan(MideaFan):
         **kwargs: Any,  # noqa: ANN401, ARG002
     ) -> None:
         """Midea X40 Fan turn on."""
-        self._device.set_attribute(attr=X40Attributes.fan_speed, value=1)
+        self._set_device_attribute(attr=X40Attributes.fan_speed, value=1)
 
     def turn_off(self, **kwargs: Any) -> None:  # noqa: ANN401, ARG002
         """Midea X40 Fan turn off."""
-        self._device.set_attribute(attr=X40Attributes.fan_speed, value=0)
+        self._set_device_attribute(attr=X40Attributes.fan_speed, value=0)

@@ -1,6 +1,7 @@
 """Base entity for Midea Lan."""
 
 import logging
+from collections.abc import Callable
 from typing import Any, cast
 
 from homeassistant.const import MAJOR_VERSION, MINOR_VERSION
@@ -15,6 +16,7 @@ else:
 from homeassistant.helpers.entity import Entity
 from midealocal.device import MideaDevice
 
+from .connection_manager import run_device_command
 from .const import DOMAIN
 from .midea_devices import MIDEA_DEVICES
 
@@ -118,6 +120,25 @@ class MideaEntity(Entity):
     def icon(self) -> str:
         """Return entity icon."""
         return cast("str", self._config.get("icon"))
+
+    def _run_device_command(
+        self,
+        description: str,
+        action: Callable[[], None],
+    ) -> None:
+        """Run a command through the shared device connection manager."""
+        run_device_command(
+            self._device,
+            f"{self.entity_id} {description}",
+            action,
+        )
+
+    def _set_device_attribute(self, attr: Any, value: Any) -> None:  # noqa: ANN401
+        """Set a device attribute through the shared command path."""
+        self._run_device_command(
+            f"set_attribute {attr}",
+            lambda: self._device.set_attribute(attr=attr, value=value),
+        )
 
     @callback
     def update_state(self, status: Any) -> None:  # noqa: ANN401

@@ -54,4 +54,4 @@ class MideaSelect(MideaEntity, SelectEntity):
 
     def select_option(self, option: str) -> None:
         """Select entity option."""
-        self._device.set_attribute(self._entity_key, option)
+        self._set_device_attribute(self._entity_key, option)
