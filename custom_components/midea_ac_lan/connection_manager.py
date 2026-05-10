@@ -8,7 +8,7 @@ import time
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from midealocal.device import MideaDevice
+from midealocal.device import MideaDevice, NoSupportedProtocol
 from midealocal.exceptions import SocketException
 
 CONNECTION_MANAGERS = "connection_managers"
@@ -24,10 +24,13 @@ _RECOVERABLE_EXCEPTIONS = (
     TimeoutError,
     SocketException,
 )
+_CONNECT_CHECK_EXCEPTIONS = (*_RECOVERABLE_EXCEPTIONS, NoSupportedProtocol)
+_COMMAND_RECONNECT_DELAYS = (0.5, 2.0, 5.0)
+_CONNECT_UNAVAILABLE_GRACE = 60.0
 
 
 class MideaConnectionManager:
-    """Serialize socket access and recover once from broken command pipes."""
+    """Serialize socket access and recover from broken command pipes."""
 
     def __init__(self, device: MideaDevice) -> None:
         """Initialize the connection manager."""
@@ -38,6 +41,7 @@ class MideaConnectionManager:
         self._last_error_at: float | None = None
         self._last_success_at: float | None = None
         self._last_reconnect_at: float | None = None
+        self._connect_failure_started_at: float | None = None
         self._reconnect_count = 0
         self._command_failures = 0
         self._original_connect = device.connect
@@ -56,6 +60,7 @@ class MideaConnectionManager:
             "last_error_at": self._last_error_at,
             "last_success_at": self._last_success_at,
             "last_reconnect_at": self._last_reconnect_at,
+            "connect_failure_started_at": self._connect_failure_started_at,
             "reconnect_count": self._reconnect_count,
             "command_failures": self._command_failures,
         }
@@ -64,11 +69,20 @@ class MideaConnectionManager:
         """Connect with serialized socket access."""
         with self._lock:
             self._state = "connecting"
-            connected = self._original_connect(check_protocol=check_protocol)
+            connected = self._original_connect(check_protocol=False)
+            if connected and check_protocol:
+                try:
+                    self._original_refresh_status(check_protocol=True)
+                except _CONNECT_CHECK_EXCEPTIONS as err:
+                    self._original_close_socket()
+                    connected = False
+                    self._record_error("connect protocol check", err)
             if connected:
+                self._device.set_available(True)
                 self._record_success("connected")
             else:
                 self._record_error("connect", RuntimeError("connect returned false"))
+                self._mark_connect_failure_unavailable()
             return connected
 
     def close_socket(self) -> None:
@@ -84,6 +98,10 @@ class MideaConnectionManager:
             try:
                 self._original_refresh_status(check_protocol=check_protocol)
                 self._record_success("ready")
+            except NoSupportedProtocol as err:
+                self._record_error("refresh_status", err)
+                self._original_close_socket()
+                raise SocketException from err
             except _RECOVERABLE_EXCEPTIONS as err:
                 self._record_error("refresh_status", err)
                 raise
@@ -120,7 +138,7 @@ class MideaConnectionManager:
         description: str,
         action: Callable[[], _ResultT],
     ) -> _ResultT:
-        """Run a device command, reconnecting once if the TCP socket broke."""
+        """Run a device command, reconnecting if the TCP socket broke."""
         try:
             with self._lock:
                 result = action()
@@ -135,41 +153,75 @@ class MideaConnectionManager:
         action: Callable[[], _ResultT],
         err: BaseException,
     ) -> _ResultT:
-        with self._lock:
-            self._record_error(description, err)
-            _LOGGER.warning(
-                "Midea command %s failed for device %s (%s), reconnecting once",
-                description,
-                self._device.device_id,
-                err,
-            )
-            self._original_close_socket()
-            self._device.set_available(False)
-            self._state = "reconnecting"
-            if not self._original_connect(check_protocol=True):
-                self._record_error(description, RuntimeError("reconnect returned false"))
-                raise err
-            self._reconnect_count += 1
-            self._last_reconnect_at = time.time()
-            try:
-                result = action()
-            except _RECOVERABLE_EXCEPTIONS as retry_err:
-                self._record_error(f"{description} retry", retry_err)
+        self._record_error(description, err)
+        last_err: BaseException = err
+        for attempt, delay in enumerate(_COMMAND_RECONNECT_DELAYS, start=1):
+            with self._lock:
+                _LOGGER.warning(
+                    (
+                        "Midea command %s failed for device %s (%s), "
+                        "reconnecting attempt %s/%s after %.1fs"
+                    ),
+                    description,
+                    self._device.device_id,
+                    last_err,
+                    attempt,
+                    len(_COMMAND_RECONNECT_DELAYS),
+                    delay,
+                )
                 self._original_close_socket()
-                self._device.set_available(False)
-                raise
-            self._record_success("ready")
-            return result
+                self._state = "reconnecting"
+                time.sleep(delay)
+                if not self._original_connect(check_protocol=False):
+                    last_err = RuntimeError("reconnect returned false")
+                    self._record_error(f"{description} reconnect {attempt}", last_err)
+                    continue
+                self._reconnect_count += 1
+                self._last_reconnect_at = time.time()
+                try:
+                    result = action()
+                except _RECOVERABLE_EXCEPTIONS as retry_err:
+                    last_err = retry_err
+                    self._record_error(f"{description} retry {attempt}", retry_err)
+                    self._original_close_socket()
+                    continue
+                self._device.set_available(True)
+                self._record_success("ready")
+                return result
+
+        _LOGGER.warning(
+            (
+                "Midea command %s failed for device %s after reconnect attempts; "
+                "leaving availability unchanged for the background reconnect loop"
+            ),
+            description,
+            self._device.device_id,
+        )
+        with self._lock:
+            self._original_close_socket()
+            self._state = "disconnected"
+        raise last_err
 
     def _record_success(self, state: str) -> None:
         self._state = state
         self._last_success_at = time.time()
+        self._connect_failure_started_at = None
 
     def _record_error(self, operation: str, err: BaseException) -> None:
         self._state = "error"
         self._command_failures += 1
         self._last_error = f"{operation}: {type(err).__name__}: {err}"
         self._last_error_at = time.time()
+
+    def _mark_connect_failure_unavailable(self) -> None:
+        now = time.time()
+        if self._connect_failure_started_at is None:
+            self._connect_failure_started_at = now
+        if (
+            not self._device.available
+            or now - self._connect_failure_started_at >= _CONNECT_UNAVAILABLE_GRACE
+        ):
+            self._device.set_available(False)
 
 
 def install_device_connection_manager(device: MideaDevice) -> MideaConnectionManager:
